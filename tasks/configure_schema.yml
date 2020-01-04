@@ -7,7 +7,7 @@
     seuser: unconfined_u  # Same as 99user.ldif
     owner: dirsrv
     group: dirsrv
-  loop: "{{ dirsrv_custom_schema }}"
+  with_items: "{{ dirsrv_custom_schema }}"
   tags: [ dirsrv_schema ]
   notify: dirsrv schema reload
 
@@ -24,7 +24,8 @@
   file:
     path: "{{ item.path }}"
     state: absent
-  loop: "{{ dirsrv_found_files['files'] }}"
+  with_items: "{{ dirsrv_found_files['files'] }}"
   notify: dirsrv schema reload
   tags: [ dirsrv_schema ]
   when: not dirsrv_allow_other_schema_files
+...

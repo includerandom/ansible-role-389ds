@@ -1,7 +1,8 @@
 ---
-- name: Install 389DS
-  yum:
-    name: 389-ds-base
+# Create group dirsrv
+- name: Add group "dirsrv"
+  group:
+    name: dirsrv
     state: present
 
 # as suggested by Red Hat Directory Server manual
@@ -14,58 +15,108 @@
     system: true
     create_home: false
 
+# Fix info about the host in /etc/hosts
+- name: Hosts | Add domain name server
+  lineinfile:
+    dest: /etc/hosts
+    regexp: "^{{ ansible_default_ipv4.address }}"
+    line: "{{ ansible_default_ipv4.address }} {{ dirsrv_fqdn }} {{ dirsrv_hostname }}"
+    state: present
+
+# Prepare list of packages which will install
+- name: 389-ds | Define | Packages
+  set_fact:
+    dirsrv_packages: "{{ __dirsrv_packages | list }}"
+  when: dirsrv_packages is not defined
+
+# Install packages 389-ds
+- name: 389-ds | Install
+  package:
+    name: "{{ item }}"
+    update_cache: yes
+    state: latest
+  with_items: "{{ dirsrv_packages }}"
+  notify:
+    - dirsrv-admin restart
+
+# Check sysctl params
+- name: Configure sysctl variables
+  sysctl:
+    name: "{{item.name}}"
+    value: "{{item.value}}"
+    sysctl_set: yes
+    state: present
+  with_items:
+    - { name: net.ipv4.tcp_keepalive_time, value: 300 }
+    - { name: net.ipv4.ip_local_port_range, value: "1024 65000" }
+    - { name: fs.file-max, value: 64000 }
+  when: dirsrv_fqdn != "local.dev"
+
+- name: Configure file descriptors for dirsrv systemd service
+  lineinfile:
+    dest: "/etc/sysconfig/dirsrv.systemd"
+    state: present
+    insertafter: "^[Service]"
+    regexp: "^LimitNOFILE"
+    line: LimitNOFILE=16384
+  when:
+    - ansible_os_family == "RedHat"
+    - dirsrv_fqdn != "local.dev"
+
 - name: Check if instance directory exists
   stat:
-    path: "/var/lib/dirsrv/slapd-{{ dirsrv_serverid }}"
-  register: dirsrv_instance_dir
+    path: "{{ dirsrv_instance_dir }}"
+  register: dirsrv_instance_dir_check
 
 - name: "Check if {{ dirsrv_serverid }} instance directory exists"
   set_fact:
-    dirsrv_instance_dir_exists: "{{ dirsrv_instance_dir.stat.exists and dirsrv_instance_dir.stat.isdir }}"
+    dirsrv_instance_dir_exists: "{{ dirsrv_instance_dir_check.stat.exists and dirsrv_instance_dir_check.stat.isdir }}"
 
 # TODO: How do we change the Directory Manager password if we need it to change the password?
 - block:
-    - name: Copy installation template
+    - name: 389-ds | Copy template silent setup file
       template:
         src: templates/install.inf.j2
         dest: /tmp/install.inf
         mode: '600'
       when: not dirsrv_instance_dir_exists
 
-    - name: Copy additional ldif files
+    - name: 389-ds | Copy additional ldif files
       copy:
         src: "{{ item }}"
         dest: "/tmp/{{ item | basename }}"
         mode: '400'
       when: not dirsrv_instance_dir_exists
-      loop: "{{ dirsrv_install_additional_ldif }}"
+      with_items: "{{ dirsrv_install_additional_ldif }}"
 
     # This will install the Directory Server *only*.
     # No Configuration Directory Server: it's documented but it doesn't really exist (it's part of the Administration Server).
     # No Administration Server: it isn't worth the effort.
-    - name: Run installation script setup-ds.pl
-      command: /usr/sbin/setup-ds.pl -s -f /tmp/install.inf
+    - name: 389-ds | setup-ds-admin.pl | Execute | {{ dirsrv_hostname }} | {{ dirsrv_fqdn }} | {{ dirsrv_suffix }}
+      shell: /usr/sbin/{{ dirsrv_setupdsadmin }} --silent --file=/tmp/install.inf --logfile=/tmp/389install.log creates=/etc/dirsrv/slapd-{{ dirsrv_serverid }}/dse.ldif
       become: true
       when: not dirsrv_instance_dir_exists
 
   always:
-    - name: Remove installation template
+    - name: 389-ds | Remove template silent setup file
       file:
         state: absent
         path: /tmp/install.inf
 
-- name: Start and enable 389DS {{ dirsrv_serverid }} instance
+# Start services
+- name: 389-ds | Start and enable 389DS {{ dirsrv_serverid }} instance
   become: true
   service:
-    name: "dirsrv@{{ dirsrv_serverid }}"
+    name: "{{ dirsrv_service_name }}@{{ dirsrv_serverid }}"
     state: started
     enabled: yes
 
 # The setup script starts the server itself, but the service/target
 # still needs to be enabled. In my tests I've found that enabling
 # dirsrv@serverid is not enough, it still doesn't start automatically...
-- name: Enable systemd target
+- name: 389-ds | Enable systemd target
   become: true
   service:
-    name: dirsrv.target
+    name: "{{ dirsrv_service_name }}.target"
     enabled: yes
+...

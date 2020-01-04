@@ -6,14 +6,14 @@
     name: nsslapd-pluginEnabled
     values: "{{ 'on' if item.value else 'off' }}"
     state: exact
-  loop: "{{ dirsrv_plugins_enabled | dict2items }}"
+  with_items: "{{ dirsrv_plugins_enabled | dict2items }}"
 
 - name: Remove DNA plugin configuration (if disabled)
   ldap_entry:
     params: "{{ dirsrv_ldap_auth }}"
     dn: "{{ item }}"
     state: absent
-  loop:
+  with_items:
     - "cn=UID numbers,cn=Distributed Numeric Assignment Plugin,cn=plugins,cn=config"
     - "cn=GID numbers,cn=Distributed Numeric Assignment Plugin,cn=plugins,cn=config"
   when: "'Distributed Numeric Assignment Plugin' in dirsrv_plugins_enabled and not dirsrv_plugins_enabled['Distributed Numeric Assignment Plugin']"
@@ -27,7 +27,7 @@
       - top
       - extensibleObject
     state: present
-  loop:
+  with_items:
     - "cn=UID numbers,cn=Distributed Numeric Assignment Plugin,cn=plugins,cn=config"
     - "cn=GID numbers,cn=Distributed Numeric Assignment Plugin,cn=plugins,cn=config"
   when: "'Distributed Numeric Assignment Plugin' in dirsrv_plugins_enabled and dirsrv_plugins_enabled['Distributed Numeric Assignment Plugin']"
@@ -40,7 +40,7 @@
     name: "{{ item.name }}"
     values: "{{ item.value }}"
     state: exact
-  loop:
+  with_items:
     - { name: "cn", value: "UID numbers" }
     - { name: "dnatype", value: "uidNumber" }
     - { name: "dnamagicregen", value: "magic" }  # doesn't have to be a number
@@ -58,13 +58,14 @@
     name: "{{ item.name }}"
     values: "{{ item.value }}"
     state: exact
-  loop:
+  with_items:
     - { name: "cn", value: "GID numbers" }
     - { name: "dnatype", value: "gidNumber" }
     - { name: "dnamagicregen", value: "magic" }
     - { name: "dnafilter", value: "(objectclass=posixAccount)" }
-    - { name: "dnascope", value: "{{ suffix }}" }
+    - { name: "dnascope", value: "{{ dirsrv_suffix }}" }
     - { name: "dnanextvalue", value: "{{ dirsrv_dna_plugin.gid_min }}" }
     - { name: "dnamaxvalue", value: "{{ dirsrv_dna_plugin.gid_max }}" }
   when: "'Distributed Numeric Assignment Plugin' in dirsrv_plugins_enabled and dirsrv_plugins_enabled['Distributed Numeric Assignment Plugin']"
   notify: dirsrv restart
+...

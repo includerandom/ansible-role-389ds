@@ -1,8 +1,16 @@
 ---
+# handlers file for 389-ds
 - name: dirsrv restart
-  service:
+  systemd:
     name: "dirsrv@{{ dirsrv_serverid }}"
     state: restarted
+    enabled: yes
+
+- name: dirsrv-admin restart
+  systemd:
+    name: dirsrv-admin
+    state: restarted
+    enabled: yes
 
 - name: dirsrv schema reload
   ldap_entry:
@@ -16,5 +24,6 @@
       - extensibleObject
     attributes:
       cn: ansible-managed schema reload
-      schemadir: "/etc/dirsrv/slapd-{{ dirsrv_serverid }}/schema/"
+      schemadir: "{{ dirsrv_instance_dir }}/schema/"
     state: present
+...

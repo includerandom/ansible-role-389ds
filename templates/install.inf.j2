@@ -11,15 +11,26 @@ FullMachineName = {{ dirsrv_fqdn }}
 # I don't think this is needed anymore, possibly it was required for the administration
 # server, so it's always set to false.
 StrictHostCheck = false
-SuiteSpotUserID = dirsrv
-SuiteSpotGroup = dirsrv
+SuiteSpotUserID = {{ dirsrv_user }}
+SuiteSpotGroup = {{ dirsrv_group }}
+AdminDomain= {{ dirsrv_admin_domain }}
+ConfigDirectoryAdminID= admin 
+ConfigDirectoryAdminPwd= {{ dirsrv_admin_password }}
+ConfigDirectoryLdapURL= ldap://{{ dirsrv_fqdn }}:389/o=NetscapeRoot
+UserDirectoryLdapURL= ldap://{{ dirsrv_fqdn }}:389/{{ dirsrv_suffix }}
 
 [slapd]
 ServerPort = 389
+{% if dirsrv_tls_enabled %}
+nsslapd-security = on
+{% endif %}
+SlapdConfigForMC = yes
+UseExistingMC = 1
 ServerIdentifier = {{ dirsrv_serverid }}
 Suffix = {{ dirsrv_suffix }}
 RootDN = {{ dirsrv_rootdn }}
 RootDNPwd = {{ dirsrv_rootdn_password }}
+# ds_bename={{ dirsrv_admin_domain }}
 {% if dirsrv_install_examples %}
 	AddOrgEntries = Yes
 	AddSampleEntries = Yes
@@ -33,3 +44,9 @@ RootDNPwd = {{ dirsrv_rootdn_password }}
 	{% endfor %}
 	{% endif %}
 {% endif %}
+
+[admin] 
+Port= {{ dirsrv_admin_port }}
+ServerIpAddress= 0.0.0.0
+ServerAdminID= admin 
+ServerAdminPwd= {{ dirsrv_admin_password }}

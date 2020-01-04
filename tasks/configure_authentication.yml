@@ -23,7 +23,7 @@
         name: "{{ item.name }}"
         values: "{{ item.value }}"
         state: exact
-      loop: "{{ dirsrv_ldapi_config }}"
+      with_items: "{{ dirsrv_ldapi_config }}"
       notify: dirsrv restart
 
   rescue:
@@ -36,7 +36,7 @@
         name: "{{ item.name }}"
         values: "{{ item.value }}"
         state: exact
-      loop: "{{ dirsrv_ldapi_config }}"
+      with_items: "{{ dirsrv_ldapi_config }}"
       notify: dirsrv restart
 
 # Documentation: https://directory.fedoraproject.org/docs/389ds/design/sasl-mechanism-configuration.html
@@ -79,3 +79,4 @@
           - not dirsrv_pwdstorage_result.changed
           - "'desc' in dirsrv_pwdstorage_result.details"
           - "{{ dirsrv_pwdstorage_result.details }}.desc == 'No such attribute'"
+...

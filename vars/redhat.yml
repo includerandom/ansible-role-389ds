@@ -1,0 +1,16 @@
+---
+__dirsrv_packages:
+  - 389-ds
+  - 389-ds-base
+  - 389-ds-console
+  - 389-console
+  - 389-admin
+  - 389-admin-console
+  - 389-adminutil
+  - idm-console-framework
+  - openldap-clients
+
+dirsrv_service_name: dirsrv
+dirsrv_group: dirsrv
+dirsrv_user: dirsrv
+dirsrv_setupdsadmin: setup-ds-admin.pl

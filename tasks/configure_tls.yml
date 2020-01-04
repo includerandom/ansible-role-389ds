@@ -111,7 +111,7 @@
     # Let's start by counting what we have there
     - name: Count Ansible managed keys in NSS database
       shell: >
-        certutil -L
+        certutil -K
         -d /etc/dirsrv/slapd-{{ dirsrv_serverid }}/
         |
         grep
@@ -137,7 +137,7 @@
         -n "server-cert-ansible-managed"
       when: dirsrv_nss_key_count_too_many
       # I'm still wondering if this loop is horrible or clever...
-      loop: "{{ range(0, dirsrv_nss_key_count.stdout|int) | list }}"
+      with_items: "{{ range(0, dirsrv_nss_key_count.stdout|int) | list }}"
 
     - name: Add pkcs12 to NSS database (again)
       command: >
@@ -195,7 +195,7 @@
       file:
         state: absent
         path: "{{ item }}"
-      loop:
+      with_items:
         - "/tmp/server-cert-ansible-managed.crt"
         - "/tmp/server-cert-ansible-managed.key"
         - "/tmp/server-cert-ansible-managed.p12"
@@ -229,7 +229,7 @@
     name: "{{ item.name }}"
     values: "{{ item.value }}"
     state: exact
-  loop:
+  with_items:
     - { name: "cn", value: "RSA" }
     - { name: "nsSSLToken", value: "internal (software)" }
     - { name: "nsSSLPersonalitySSL", value: "server-cert-ansible-managed" }
@@ -268,7 +268,7 @@
     name: "{{ item.name }}"
     values: "{{ item.value }}"
     state: exact
-  loop:
+  with_items:
     - { name: "nsssl2", value: "off" }
     - { name: "nsssl3", value: "off" }
     - { name: "sslVersionMin", value: "TLS{{ dirsrv_tls_min_version }}" }
@@ -294,7 +294,7 @@
     name: "{{ item.name }}"
     values: "{{ item.value }}"
     state: exact
-  loop:
+  with_items:
     -
       name: "nsslapd-allow-anonymous-access"
       value: "{{ 'rootdse' if dirsrv_allow_anonymous_binds == 'rootdse' else 'on' if dirsrv_allow_anonymous_binds else 'off' }}"
@@ -302,3 +302,4 @@
   # - { name: "nsslapd-allow-unauthenticated-binds", value: "{{ 'on' if allow_unauthenticated_binds else 'off' }" }
   when: dirsrv_tls_enabled | bool
   tags: [ dirsrv_tls ]
+...

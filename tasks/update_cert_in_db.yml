@@ -1,0 +1,8 @@
+---
+- name: 389-ds | Copy script for update imported certs in db
+  template:
+    src: templates/update_cert_in_db.sh.j2
+    dest: /etc/update_cert_in_db.sh
+    mode: '700'
+  when: dirsrv_update_cert_db | bool
+...

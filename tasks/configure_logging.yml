@@ -8,7 +8,7 @@
     name: "{{ item.name }}"
     values: "{{ item.value }}"
     state: exact
-  loop:
+  with_items:
     - { name: 'nsslapd-auditlog-logging-enabled', value: "{{ 'on' if dirsrv_logging.audit.enabled else 'off' }}" }
     - { name: 'nsslapd-auditlog-logrotationtimeunit', value: "{{ dirsrv_logging.audit.logrotationtimeunit }}" }
     - { name: 'nsslapd-auditlog-logmaxdiskspace', value: "{{ dirsrv_logging.audit.logmaxdiskspace }}"}
@@ -23,7 +23,7 @@
     name: "{{ item.name }}"
     values: "{{ item.value }}"
     state: exact
-  loop:
+  with_items:
     - { name: "nsslapd-errorlog-logging-enabled", value: "{{ 'on' if dirsrv_logging.error.enabled else 'off' }}" }
     - { name: "nsslapd-errorlog-logrotationtimeunit", value: "{{ dirsrv_logging.error.logrotationtimeunit }}" }
     - { name: "nsslapd-errorlog-logmaxdiskspace", value: "{{ dirsrv_logging.error.logmaxdiskspace }}" }
@@ -38,10 +38,11 @@
     name: "{{ item.name }}"
     values: "{{ item.value }}"
     state: exact
-  loop:
+  with_items:
     - { name: "nsslapd-accesslog-logging-enabled", value: "{{ 'on' if dirsrv_logging.access.enabled else 'off' }}" }
     - { name: "nsslapd-accesslog-logrotationtimeunit", value: "{{ dirsrv_logging.access.logrotationtimeunit }}" }
     - { name: "nsslapd-accesslog-logmaxdiskspace", value: "{{ dirsrv_logging.access.logmaxdiskspace }}" }
     - { name: "nsslapd-accesslog-maxlogsize", value: "{{ dirsrv_logging.access.maxlogsize }}" }
     - { name: "nsslapd-accesslog-maxlogsperdir", value: "{{ dirsrv_logging.access.maxlogsperdir }}" }
     - { name: "nsslapd-accesslog-mode", value: "{{ dirsrv_logging.access.mode }}" }
+...

@@ -1,0 +1,33 @@
+#!/bin/bash
+# The script update certs in dirsrv db
+
+# Copy new crt file  
+cp "{{ dirsrv_tls_cert_file }}" "/tmp/server-cert-ansible-managed.crt"
+chmod 400 "/tmp/server-cert-ansible-managed.crt"
+chcon -t cert_t "/tmp/server-cert-ansible-managed.crt"
+
+# Copy new key file
+cp "{{ dirsrv_tls_key_file }}" "/tmp/server-cert-ansible-managed.key"
+chmod 400 "/tmp/server-cert-ansible-managed.key"
+chcon -t cert_t "/tmp/server-cert-ansible-managed.key"
+
+# Create empty file
+touch "/tmp/server-cert-ansible-managed.p12"
+chmod 400 "/tmp/server-cert-ansible-managed.p12"
+chcon -t cert_t "/tmp/server-cert-ansible-managed.p12"
+
+# Generate new file for import
+openssl pkcs12 -export -in "/tmp/server-cert-ansible-managed.crt" \
+	-inkey "/tmp/server-cert-ansible-managed.key" \
+	-name "server-cert-ansible-managed" \
+	-out "/tmp/server-cert-ansible-managed.p12" \
+	-nodes -passout pass: 
+
+# Import file into db
+pk12util -i /tmp/server-cert-ansible-managed.p12 -d /etc/dirsrv/slapd-{{ dirsrv_serverid }} -K '' -W ''
+
+# Delete files
+rm -rf /tmp/server-cert-ansible-managed.*
+
+exit
+
