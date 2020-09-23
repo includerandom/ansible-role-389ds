@@ -3,11 +3,7 @@
 # this excludes state=present and state=absent, but state=exact still works (only does a ldapsearch)
 - name: Configure Audit logging
   ldap_attr:
-    server_uri: "{{ dirsrv_server_uri }}"
-    validate_certs: "{{ dirsrv_tls_certificate_trusted }}"
-    start_tls: "{{ dirsrv_starttls_early }}"
-    bind_dn: "{{ dirsrv_rootdn }}"
-    bind_pw: "{{ dirsrv_rootdn_password }}"
+    params: "{{ dirsrv_ldap_auth }}"
     dn: cn=config
     name: "{{ item.name }}"
     values: "{{ item.value }}"
@@ -22,11 +18,7 @@
 
 - name: Configure Error logging
   ldap_attr:
-    server_uri: "{{ dirsrv_server_uri }}"
-    validate_certs: "{{ dirsrv_tls_certificate_trusted }}"
-    start_tls: "{{ dirsrv_starttls_early }}"
-    bind_dn: "{{ dirsrv_rootdn }}"
-    bind_pw: "{{ dirsrv_rootdn_password }}"
+    params: "{{ dirsrv_ldap_auth }}"
     dn: cn=config
     name: "{{ item.name }}"
     values: "{{ item.value }}"
@@ -41,11 +33,7 @@
 
 - name: Configure Access logging
   ldap_attr:
-    server_uri: "{{ dirsrv_server_uri }}"
-    validate_certs: "{{ dirsrv_tls_certificate_trusted }}"
-    start_tls: "{{ dirsrv_starttls_early }}"
-    bind_dn: "{{ dirsrv_rootdn }}"
-    bind_pw: "{{ dirsrv_rootdn_password }}"
+    params: "{{ dirsrv_ldap_auth }}"
     dn: cn=config
     name: "{{ item.name }}"
     values: "{{ item.value }}"

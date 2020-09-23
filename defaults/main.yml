@@ -1,14 +1,23 @@
 ---
+# Install 389-ds
+dirsrv_fqdn: "{{ ansible_fqdn }}"
 
-# Instance settings
+dirsrv_hostname: "{{ dirsrv_fqdn.split('.')[0] }}"
+dirsrv_suffix: "dc={{ dirsrv_fqdn.split('.')[-2] | default(389) }},dc={{ dirsrv_fqdn.split('.')[-1] }}"
 
-dirsrv_suffix: dc=example,dc=com
-dirsrv_rootdn: cn=Directory Manager
-# dirsrv_rootdn_password: secret
-dirsrv_fqdn: "{{ ansible_nodename }}"
+dirsrv_password: not_set_yet
+
+dirsrv_rootdn: "cn=Directory Manager"
+dirsrv_rootdn_password: "{{ dirsrv_password }}"
+
 dirsrv_serverid: default
-# The tasks run on the same server as 389DS, so this will be localhost in most cases
-dirsrv_server_uri: "ldap://localhost"
+# Don't touch this! It seems to hardcode
+dirsrv_instance_dir: "/var/lib/dirsrv/slapd-{{ dirsrv_serverid }}"
+
+# Administration server
+dirsrv_admin_port: 9830
+dirsrv_admin_password: "{{ dirsrv_password }}"
+dirsrv_admin_domain: "{{ dirsrv_fqdn.split('.')[1:] | join('.') }}"
 
 dirsrv_install_examples: false
 dirsrv_install_additional_ldif: []
@@ -75,12 +84,19 @@ dirsrv_allow_other_schema_files: false
 
 dirsrv_tls_enabled: false
 dirsrv_tls_min_version: '1.2'
-dirsrv_tls_certificate_trusted: true  # As in, "publicly trusted because it's signed by a public and recognized CA"
+#dirsrv_tls_cert_file: example_cert.pem
+#dirsrv_tls_key_file: example.key
+#dirsrv_tls_files_remote: false # True if the files are already on remote host (e.g. provided by certbot)
+dirsrv_tls_certificate_trusted: true # Or false if self-signed
+# If you want to avoid plain LDAP and enforce TLS, also consider these settings:
 dirsrv_tls_enforced: false
 dirsrv_tls_minssf: 256
 dirsrv_allow_anonymous_binds: 'rootdse'
+#dirsrv_allow_anonymous_binds: false
 dirsrv_simple_auth_enabled: true
+# Nothing to do with TLS, but for improved security you may consider:
 dirsrv_password_storage_scheme: []
+# even though the default password storage scheme is already strong enough.
 
 # It's already off by default
 # allow_unauthenticated_binds: false
@@ -89,8 +105,7 @@ dirsrv_password_storage_scheme: []
 
 dirsrv_ldapi_enabled: false
 dirsrv_sasl_plain_enabled: true
-dirsrv_listen_host:
-
+dirsrv_update_cert_db: true
 # Display supported cipher suites:
 # ldapsearch -xLLL -H ldap://server.example.com:389 -D "cn=Directory Manager" -W -b 'cn=encryption,cn=config' -s base nsSSLSupportedCiphers -o ldif-wrap=no dn: cn=encryption,cn=config
 

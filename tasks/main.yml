@@ -1,10 +1,23 @@
 ---
+# Include variables and define needed variables
+- name: Include OS specific vars
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_release }}.yml"
+        - "{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution_major_version|lower|replace('/', '_') }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+      ignore: true
+
 # TODO: cn=config contains nsslapd-requiresrestart, a list of things that need a restart. Check that all of them have "notify: dirsrv restart"...
 
 # TODO: are nsCertFile and nsKeyFile still allowed, instead of the NSS database which is nearly impossible to handle correctly?
 # https://www.port389.org/docs/389ds/howto/howto-ssl.html
 
-- include: install_389ds.yml
+- include_tasks: install_389ds.yml
 
 - name: Check that tls_enforced makes sense
   assert:
@@ -39,48 +52,45 @@
   tags: [ dirsrv_tls, dirsrv_cert, dirsrv_schema ]  # Needed for all these tags
 
 - name: Prepare LDAP auth data
-  tags: [ dirsrv_tls, dirsrv_cert, dirsrv_schema ]  # Needed for all these tags
   set_fact:
-    # LDAPI or binding port 389 without STARTTLS will fail, if TLS
-    # is enforced. But we can't bind on port 636 or use STARTTLS
-    # without checking: when the server has been just installed, no
-    # certificates and no TLS are available.
-    # The condition checks "secure-binds is on (found) OR minssf is not 0 (is set and is not 0)"
-    dirsrv_starttls_early: "{{ dirsrv_tls_enforced_initially_binds.rc == 0 \
-      or (dirsrv_tls_enforced_initially_ssf_set.rc == 0 and dirsrv_tls_enforced_initially_ssf.rc == 1) }}"
+    dirsrv_ldap_auth:
+      server_uri: "ldap://localhost"
+      validate_certs: "{{ dirsrv_tls_certificate_trusted }}"
+      # LDAPI or binding port 389 without STARTTLS will fail, if TLS
+      # is enforced. But we can't bind on port 636 or use STARTTLS
+      # without checking: when the server has been just installed, no
+      # certificates and no TLS are available.
+      # The condition checks "secure-binds is on (found) OR minssf is not 0 (is set and is not 0)"
+      start_tls: "{{ dirsrv_tls_enforced_initially_binds.rc == 0 or (dirsrv_tls_enforced_initially_ssf_set.rc == 0 and dirsrv_tls_enforced_initially_ssf.rc == 1) }}"
+      bind_dn: "{{ dirsrv_rootdn }}"
+      bind_pw: "{{ dirsrv_rootdn_password }}"
+    # Cannot override a single parameter, so if the TLS enforcing
+    # state changes during the play, we need another set of auth
+    # parameters just to switch a boolean...
+    dirsrv_ldap_auth_later:
+      server_uri: "ldap://localhost"
+      validate_certs: "{{ dirsrv_tls_certificate_trusted }}"
+      start_tls: "{{ dirsrv_tls_enforced }}"
+      bind_dn: "{{ dirsrv_rootdn }}"
+      bind_pw: "{{ dirsrv_rootdn_password }}"
+  tags: [ dirsrv_tls, dirsrv_cert, dirsrv_schema ]  # Needed for all these tags
 
-- name: Configure listen address
-  ldap_attr:
-    server_uri: "{{ dirsrv_server_uri }}"
-    validate_certs: "{{ dirsrv_tls_certificate_trusted }}"
-    start_tls: "{{ dirsrv_starttls_early }}"
-    bind_dn: "{{ dirsrv_rootdn }}"
-    bind_pw: "{{ dirsrv_rootdn_password }}"
-    dn: "cn=config"
-    name: "nsslapd-listenhost"
-    values: "{{ dirsrv_listen_host }}"
-    state: exact
-  notify: dirsrv restart
-  when: dirsrv_listen_host != None
+# config
+- include_tasks: configure_authentication.yml
 
-- include: configure_authentication.yml
+- include_tasks: configure_logging.yml
 
-- include: configure_logging.yml
+- include_tasks: configure_plugins.yml
 
-- include: configure_plugins.yml
+- include_tasks: configure_schema.yml
 
-- include: configure_schema.yml
+- include_tasks: configure_tls.yml
 
-- include: configure_tls.yml
+- include_tasks: configure_tls_enforcing.yml
+
+- include_tasks: update_cert_in_db.yml
 
 # Restart server and/or reload schema, to enable TLS and schema changes.
-# Required to enforce TLS as TLS must be enabled beforehand (requiring a restart).
 - meta: flush_handlers
   tags: [ dirsrv_tls, dirsrv_cert, dirsrv_schema ]
-
-- include: configure_tls_enforcing.yml
-
-# Restart server to enforce TLS.
-# This only happens if TLS is being enforced.
-- meta: flush_handlers
-  tags: [ dirsrv_tls, dirsrv_cert, dirsrv_schema ]
+...
